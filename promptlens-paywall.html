@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptLens — Upgrade</title>
+<script src="https://js.stripe.com/v3/"></script>
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #000;
+  --surface: #080808;
+  --border: rgba(255,255,255,0.07);
+  --bordhi: rgba(255,255,255,0.18);
+  --text: #e8e8e8;
+  --muted: rgba(232,232,232,0.38);
+  --faint: rgba(255,255,255,0.05);
+  --red: #ff4444;
+  --amber: #ffaa00;
+  --green: #00e676;
+  --r: 16px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Noise ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Orbs ── */
+.bg-fx { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.orb { position: absolute; border-radius: 50%; filter: blur(140px); animation: drift 30s ease-in-out infinite alternate; }
+.orb-1 { width: 700px; height: 700px; background: radial-gradient(circle, rgba(255,255,255,0.055) 0%, transparent 70%); top: -300px; left: -100px; animation-duration: 38s; }
+.orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(255,255,255,0.035) 0%, transparent 70%); bottom: -150px; right: -50px; animation-duration: 26s; animation-delay: -14s; }
+.orb-3 { width: 350px; height: 350px; background: radial-gradient(circle, rgba(255,255,255,0.025) 0%, transparent 70%); top: 40%; left: 55%; animation-duration: 32s; animation-delay: -7s; }
+@keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(60px,50px) scale(1.05); } }
+
+/* ── Layout ── */
+.wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 2rem 6rem; }
+
+/* ── Nav ── */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.8rem 0; border-bottom: 1px solid var(--faint);
+  animation: fadeDown 0.6s ease both;
+}
+.nav-logo {
+  font-family: 'Black Ops One', sans-serif;
+  font-size: 1.3rem; letter-spacing: 0.08em; color: #fff;
+  text-decoration: none;
+  text-shadow: 0 0 20px rgba(255,255,255,0.4);
+}
+.nav-back {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: 'DM Mono', monospace; font-size: 0.65rem;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none; transition: color 0.2s;
+}
+.nav-back:hover { color: #fff; }
+.nav-back svg { width: 14px; height: 14px; }
+
+/* ── Hero ── */
+.hero {
+  text-align: center; padding: 5rem 0 3.5rem;
+  animation: fadeUp 0.7s 0.1s ease both;
+}
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-family: 'DM Mono', monospace; font-size: 0.6rem;
+  letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1.5rem;
+  padding: 0.35rem 1rem; border: 1px solid var(--border); border-radius: 999px;
+}
+.eyebrow-dot { width: 5px; height: 5px; background: var(--amber); border-radius: 50%; box-shadow: 0 0 8px var(--amber); animation: pulse 2s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(0.7);} }
+
+.hero h1 {
+  font-family: 'Black Ops One', sans-serif;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  letter-spacing: 0.04em; line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 0 60px rgba(255,255,255,0.12);
+  margin-bottom: 1.2rem;
+}
+.hero h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.4) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.hero p {
+  font-size: 1rem; color: var(--muted); line-height: 1.8;
+  max-width: 480px; margin: 0 auto 2rem;
+}
+
+/* ── Toggle ── */
+.billing-toggle {
+  display: inline-flex; align-items: center; gap: 0;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px; margin-bottom: 3.5rem;
+}
+.toggle-btn {
+  font-family: 'DM Mono', monospace; font-size: 0.65rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 0.5rem 1.2rem; border-radius: 999px; cursor: pointer;
+  border: none; background: transparent; color: var(--muted); transition: all 0.25s;
+}
+.toggle-btn.active { background: #fff; color: #000; box-shadow: 0 0 20px rgba(255,255,255,0.15); }
+.save-badge {
+  font-family: 'DM Mono', monospace; font-size: 0.52rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.18rem 0.55rem; border-radius: 999px;
+  background: rgba(0,230,118,0.12); border: 1px solid rgba(0,230,118,0.25);
+  color: var(--green); margin-left: 0.4rem; white-space: nowrap;
+  box-shadow: 0 0 10px rgba(0,230,118,0.1);
+}
+
+/* ── Plans grid ── */
+.plans-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;
+  align-items: start; margin-bottom: 3rem;
+}
+
+@media (max-width: 860px) {
+  .plans-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+}
+
+/* ── Plan card ── */
+.plan-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2rem; position: relative; overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+  cursor: pointer; animation: fadeUp 0.6s ease both;
+}
+.plan-card:nth-child(2) { animation-delay: 0.08s; }
+.plan-card:nth-child(3) { animation-delay: 0.16s; }
+
+.plan-card::before {
+  content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+
+.plan-card:hover {
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 0 40px rgba(255,255,255,0.04), 0 30px 60px rgba(0,0,0,0.5);
+  transform: translateY(-3px);
+}
+
+.plan-card.featured {
+  border-color: rgba(255,255,255,0.22);
+  background: #0d0d0d;
+  box-shadow: 0 0 60px rgba(255,255,255,0.05), 0 0 0 1px rgba(255,255,255,0.08);
+  transform: translateY(-6px);
+}
+.plan-card.featured:hover { transform: translateY(-9px); }
+.plan-card.featured::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+}
+
+.featured-badge {
+  position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+  background: #fff; color: #000;
+  font-family: 'DM Mono', monospace; font-size: 0.5rem; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  padding: 0.22rem 0.8rem; border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.plan-name {
+  font-family: 'DM Mono', monospace; font-size: 0.58rem;
+  letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted);
+  margin-bottom: 1.2rem;
+}
+
+.plan-price-row { display: flex; align-items: baseline; gap: 0.25rem; margin-bottom: 0.4rem; }
+.plan-price {
+  font-family: 'Black Ops One', sans-serif;
+  font-size: 3.2rem; line-height: 1; color: #fff;
+  text-shadow: 0 0 30px rgba(255,255,255,0.2);
+}
+.plan-price-unit { font-size: 0.85rem; color: var(--muted); font-weight: 300; }
+.plan-price-annual { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--muted); margin-bottom: 1.6rem; min-height: 1rem; }
+.plan-price-annual .strike { text-decoration: line-through; opacity: 0.5; }
+.plan-price-annual .saved { color: var(--green); }
+
+.divider { height: 1px; background: var(--faint); margin: 1.4rem 0; }
+
+.features { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.8rem; }
+.feature { display: flex; align-items: flex-start; gap: 0.7rem; font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+.feature-icon {
+  width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.feature-icon.check { background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.2); }
+.feature-icon.check svg { color: var(--green); }
+.feature-icon.x { background: rgba(255,68,68,0.08); border: 1px solid rgba(255,68,68,0.15); }
+.feature-icon.x svg { color: rgba(255,68,68,0.5); }
+.feature strong { color: rgba(255,255,255,0.75); font-weight: 500; }
+
+/* ── CTA button ── */
+.btn-plan {
+  width: 100%; padding: 0.9rem;
+  border-radius: var(--r); cursor: pointer;
+  font-family: 'Black Ops One', sans-serif;
+  font-size: 0.85rem; letter-spacing: 0.15em;
+  transition: all 0.25s; position: relative; overflow: hidden;
+  text-transform: uppercase;
+}
+
+.btn-plan-outline {
+  background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.6);
+}
+.btn-plan-outline:hover {
+  border-color: rgba(255,255,255,0.4); color: #fff;
+  box-shadow: 0 0 20px rgba(255,255,255,0.06);
+}
+
+.btn-plan-primary {
+  background: #fff; color: #000; border: none;
+  box-shadow: 0 0 40px rgba(255,255,255,0.2);
+}
+.btn-plan-primary:hover {
+  background: #f0f0f0;
+  box-shadow: 0 0 60px rgba(255,255,255,0.35);
+  transform: translateY(-1px);
+}
+
+/* ── Spinner inside button ── */
+.btn-spinner-wrap { display: flex; align-items: center; justify-content: center; gap: 0.6rem; }
+.btn-ring {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.2); border-top-color: #000;
+  animation: spin 0.7s linear infinite; display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Trust bar ── */
+.trust-bar {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 2rem; padding: 2rem 0; border-top: 1px solid var(--faint);
+  border-bottom: 1px solid var(--faint); margin-bottom: 3rem;
+  animation: fadeUp 0.7s 0.3s ease both;
+}
+.trust-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-family: 'DM Mono', monospace; font-size: 0.6rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+.trust-item svg { color: rgba(255,255,255,0.3); flex-shrink: 0; }
+
+/* ── FAQ ── */
+.faq-section { max-width: 640px; margin: 0 auto; animation: fadeUp 0.7s 0.4s ease both; }
+.faq-title {
+  font-family: 'Black Ops One', sans-serif; font-size: 1.6rem;
+  letter-spacing: 0.06em; color: #fff; text-align: center;
+  margin-bottom: 2rem; text-shadow: 0 0 30px rgba(255,255,255,0.1);
+}
+.faq-item {
+  border-bottom: 1px solid var(--faint); overflow: hidden;
+}
+.faq-q {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 0; background: none; border: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500;
+  color: rgba(255,255,255,0.75); text-align: left; gap: 1rem;
+  transition: color 0.2s;
+}
+.faq-q:hover { color: #fff; }
+.faq-chevron { width: 16px; height: 16px; flex-shrink: 0; transition: transform 0.3s; color: var(--muted); }
+.faq-item.open .faq-chevron { transform: rotate(180deg); }
+.faq-a {
+  font-size: 0.82rem; color: var(--muted); line-height: 1.8;
+  max-height: 0; overflow: hidden; transition: max-height 0.35s ease, padding 0.35s;
+  padding-bottom: 0;
+}
+.faq-item.open .faq-a { max-height: 200px; padding-bottom: 1.1rem; }
+
+/* ── Footer ── */
+footer {
+  text-align: center; padding: 2rem 0 0; margin-top: 4rem;
+  border-top: 1px solid var(--faint);
+  font-family: 'DM Mono', monospace; font-size: 0.55rem;
+  letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.15);
+}
+footer a { color: rgba(255,255,255,0.3); text-decoration: none; }
+footer a:hover { color: rgba(255,255,255,0.6); }
+
+/* ── Modal (success/error) ── */
+.overlay {
+  display: none; position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+  align-items: center; justify-content: center;
+}
+.overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.modal-box {
+  background: #090909; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px; padding: 2.5rem; max-width: 400px; width: calc(100% - 2rem);
+  text-align: center; animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+.modal-box::before {
+  content:''; display:block; width:60px; height:60px; border-radius:14px;
+  margin: 0 auto 1.5rem; display:flex; align-items:center; justify-content:center;
+  font-size:1.8rem; line-height:60px; text-align:center;
+}
+.modal-box.success::before { content:'✓'; background:rgba(0,230,118,0.1); border:1px solid rgba(0,230,118,0.2); color:var(--green); }
+.modal-box h3 { font-family:'Black Ops One',sans-serif; font-size:1.4rem; color:#fff; margin-bottom:0.5rem; }
+.modal-box p { font-size:0.82rem; color:var(--muted); line-height:1.7; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+
+/* ── Animations ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<div class="bg-fx">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="wrapper">
+
+  <nav>
+    <a href="index.html" class="nav-logo">PromptLens</a>
+    <a href="index.html" class="nav-back">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3L5 8l5 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Back to app
+    </a>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">
+      <span class="eyebrow-dot"></span>
+      Free limit reached
+    </div>
+    <h1>Unlock <em>Unlimited</em><br>Image Analysis</h1>
+    <p>You've used your 2 free analyses. Upgrade to continue generating professional prompts powered by Claude Vision.</p>
+
+    <div class="billing-toggle">
+      <button class="toggle-btn active" id="monthlyBtn" onclick="setBilling('monthly')">Monthly</button>
+      <button class="toggle-btn" id="annualBtn" onclick="setBilling('annual')">
+        Annual <span class="save-badge">Save 40%</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- PLANS -->
+  <div class="plans-grid" id="plansGrid">
+
+    <!-- STARTER -->
+    <div class="plan-card" onclick="selectPlan('starter')">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price-row">
+        <div class="plan-price" id="starterPrice">$4</div>
+        <div class="plan-price-unit">/mo</div>
+      </div>
+      <div class="plan-price-annual" id="starterAnnual">&nbsp;</div>
+      <div class="divider"></div>
+      <div class="features">
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span><strong>50 analyses</strong> per month</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>All output styles</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>JSON export</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon x"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2L2 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          <span style="opacity:0.45">Batch processing</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon x"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2L2 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          <span style="opacity:0.45">Priority access</span>
+        </div>
+      </div>
+      <button class="btn-plan btn-plan-outline" onclick="checkout('starter', event)">
+        <span class="btn-spinner-wrap">
+          <div class="btn-ring" id="ring-starter"></div>
+          <span id="label-starter">Get Starter</span>
+        </span>
+      </button>
+    </div>
+
+    <!-- PRO (FEATURED) -->
+    <div class="plan-card featured" onclick="selectPlan('pro')">
+      <div class="featured-badge">Most Popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price-row">
+        <div class="plan-price" id="proPrice">$9</div>
+        <div class="plan-price-unit">/mo</div>
+      </div>
+      <div class="plan-price-annual" id="proAnnual">&nbsp;</div>
+      <div class="divider"></div>
+      <div class="features">
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span><strong>Unlimited</strong> analyses</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>All output styles</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>JSON export</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Batch processing</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Priority access</span>
+        </div>
+      </div>
+      <button class="btn-plan btn-plan-primary" onclick="checkout('pro', event)">
+        <span class="btn-spinner-wrap">
+          <div class="btn-ring" id="ring-pro" style="border-color:rgba(0,0,0,0.15);border-top-color:#000"></div>
+          <span id="label-pro">Upgrade to Pro</span>
+        </span>
+      </button>
+    </div>
+
+    <!-- TEAM -->
+    <div class="plan-card" onclick="selectPlan('team')">
+      <div class="plan-name">Team</div>
+      <div class="plan-price-row">
+        <div class="plan-price" id="teamPrice">$19</div>
+        <div class="plan-price-unit">/mo</div>
+      </div>
+      <div class="plan-price-annual" id="teamAnnual">&nbsp;</div>
+      <div class="divider"></div>
+      <div class="features">
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span><strong>Unlimited</strong> analyses</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Everything in Pro</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span><strong>Up to 5 seats</strong></span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>API access</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Priority support</span>
+        </div>
+      </div>
+      <button class="btn-plan btn-plan-outline" onclick="checkout('team', event)">
+        <span class="btn-spinner-wrap">
+          <div class="btn-ring" id="ring-team"></div>
+          <span id="label-team">Get Team</span>
+        </span>
+      </button>
+    </div>
+
+  </div><!-- /plans-grid -->
+
+  <!-- TRUST BAR -->
+  <div class="trust-bar">
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.8 3.6 4 .6-2.9 2.8.7 4L8 10l-3.6 2 .7-4L2.2 5.2l4-.6L8 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      Powered by Stripe
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="7" width="12" height="8" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      256-bit SSL encryption
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2C5.8 2 4 3.8 4 6v1H3v7h10V7h-1V6c0-2.2-1.8-4-4-4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8" cy="10.5" r="1" fill="currentColor"/></svg>
+      No card stored on our servers
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6-6-2.7-6-6z" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 8.5l1.5 1.5 3.5-3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Cancel anytime, instantly
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v4l2.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/></svg>
+      7-day money-back guarantee
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq-section">
+    <div class="faq-title">Questions</div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How does billing work?
+        <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="faq-a">You're charged on the day you subscribe, and then on the same day each month (or year for annual plans). You can cancel at any time from your account settings — your access continues until the end of the billing period.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Can I cancel anytime?
+        <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="faq-a">Yes, absolutely. There are no contracts or lock-ins. Cancel in one click and you won't be charged again. Your account stays active until the end of the period you've already paid for.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Is my payment information safe?
+        <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="faq-a">All payments are processed securely by Stripe, a PCI-DSS Level 1 certified provider trusted by millions of businesses worldwide. We never store your card details on our servers.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What happens to my analyses after upgrading?
+        <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="faq-a">Your usage counter resets immediately and you get full access right away. No waiting, no activation delay — you can start analyzing images the moment your payment is confirmed.</div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        Do you offer refunds?
+        <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="faq-a">Yes. If you're not satisfied within the first 7 days of your subscription, contact us and we'll issue a full refund — no questions asked.</div>
+    </div>
+
+  </div>
+
+  <footer>
+    PromptLens &nbsp;&middot;&nbsp; Secure checkout by Stripe &nbsp;&middot;&nbsp;
+    <a href="#">Privacy Policy</a> &nbsp;&middot;&nbsp;
+    <a href="#">Terms of Service</a> &nbsp;&middot;&nbsp;
+    <a href="mailto:support@promptlens.app">Support</a>
+    &nbsp;&middot;&nbsp; 2025
+  </footer>
+
+</div><!-- /wrapper -->
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  STRIPE CONFIGURATION
+//  Chave pública do Stripe (segura para o frontend)
+// ════════════════════════════════════════════════════════════════
+const STRIPE_PK = 'pk_test_51T2bvjJBvW4sAl6iODYPGC2MfkfIGTbOjtiPEXmmGpU1TFIeARdvZAkI8jml7jg32TsQr8P4cXFITLueUsOtHgTn00r0MBEtMk';
+
+// ⬇️ Cole aqui os Price IDs dos seus produtos no Stripe Dashboard
+//    Criar em: https://dashboard.stripe.com/products
+//    Formato: price_xxxxxxxxxxxxxxxxxxxxxx
+const PRICE_IDS = {
+  starter: {
+    monthly: 'price_STARTER_MENSAL_ID',
+    annual:  'price_STARTER_ANUAL_ID'
+  },
+  pro: {
+    monthly: 'price_PRO_MENSAL_ID',
+    annual:  'price_PRO_ANUAL_ID'
+  },
+  team: {
+    monthly: 'price_TEAM_MENSAL_ID',
+    annual:  'price_TEAM_ANUAL_ID'
+  }
+};
+
+// URL para onde o Stripe redireciona após pagamento bem-sucedido
+const SUCCESS_URL = window.location.origin + '/success.html';
+// URL para onde o Stripe redireciona se o usuário cancelar
+const CANCEL_URL  = window.location.href;
+// ════════════════════════════════════════════════════════════════
+
+const stripe = Stripe(STRIPE_PK);
+
+const PRICES = {
+  starter: { monthly: '$4', annual: '$2.40', annualTotal: '$28.80' },
+  pro:     { monthly: '$9', annual: '$5.40', annualTotal: '$64.80' },
+  team:    { monthly: '$19', annual: '$11.40', annualTotal: '$136.80' }
+};
+
+const BTN_LABELS = { starter: 'Get Starter', pro: 'Upgrade to Pro', team: 'Get Team' };
+
+let billingCycle = 'monthly';
+
+function setBilling(cycle) {
+  billingCycle = cycle;
+  document.getElementById('monthlyBtn').classList.toggle('active', cycle === 'monthly');
+  document.getElementById('annualBtn').classList.toggle('active', cycle === 'annual');
+
+  ['starter', 'pro', 'team'].forEach(plan => {
+    const p = PRICES[plan];
+    document.getElementById(plan + 'Price').textContent = cycle === 'monthly' ? p.monthly : p.annual;
+
+    const annualEl = document.getElementById(plan + 'Annual');
+    if(cycle === 'annual') {
+      annualEl.innerHTML = '<span class="strike">' + p.monthly + '/mo</span> → <span class="saved">' + p.annualTotal + '/yr billed annually</span>';
+    } else {
+      annualEl.innerHTML = '&nbsp;';
+    }
+  });
+}
+
+async function checkout(plan, e) {
+  e.stopPropagation();
+
+  const priceId = PRICE_IDS[plan]?.[billingCycle];
+
+  // Show loading state
+  const ring  = document.getElementById('ring-' + plan);
+  const label = document.getElementById('label-' + plan);
+  ring.style.display  = 'block';
+  label.textContent   = 'Abrindo checkout…';
+
+  // Guard: Price ID not yet configured
+  if(!priceId || priceId.startsWith('price_') && priceId.endsWith('_ID')) {
+    ring.style.display = 'none';
+    label.textContent  = BTN_LABELS[plan];
+    showSetupGuide(plan);
+    return;
+  }
+
+  try {
+    const { error } = await stripe.redirectToCheckout({
+      lineItems: [{ price: priceId, quantity: 1 }],
+      mode: 'subscription',
+      successUrl: SUCCESS_URL,
+      cancelUrl:  CANCEL_URL,
+      billingAddressCollection: 'auto',
+      locale: 'auto'
+    });
+
+    if(error) {
+      ring.style.display = 'none';
+      label.textContent  = BTN_LABELS[plan];
+      showError(error.message);
+    }
+  } catch(err) {
+    ring.style.display = 'none';
+    label.textContent  = BTN_LABELS[plan];
+    showError(err.message);
+  }
+}
+
+function showSetupGuide(plan) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
+  overlay.innerHTML = `
+    <div style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:2.5rem;max-width:460px;width:calc(100% - 2rem);text-align:center;animation:slideUp 0.3s ease;position:relative;">
+      <div style="font-size:2rem;margin-bottom:1rem;">⚙️</div>
+      <h3 style="font-family:'Black Ops One',sans-serif;font-size:1.3rem;color:#fff;letter-spacing:0.06em;margin-bottom:0.75rem;">Configure Price IDs</h3>
+      <p style="font-size:0.8rem;color:rgba(232,232,232,0.45);line-height:1.8;margin-bottom:1.5rem;">
+        Para ativar o checkout do <strong style="color:rgba(255,255,255,0.7)">${plan}</strong>, você precisa criar o produto no Stripe e colar o Price ID no código.
+      </p>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1rem;text-align:left;font-family:'DM Mono',monospace;font-size:0.7rem;color:rgba(255,255,255,0.5);line-height:2;margin-bottom:1.5rem;">
+        1. Acesse <span style="color:#fff">dashboard.stripe.com/products</span><br>
+        2. Crie um produto com preço recorrente<br>
+        3. Copie o <span style="color:#fff">Price ID</span> (começa com <span style="color:#fff">price_</span>)<br>
+        4. Cole em <span style="color:#fff">PRICE_IDS.${plan}.${billingCycle}</span> no script
+      </div>
+      <a href="https://dashboard.stripe.com/products" target="_blank" style="display:block;width:100%;padding:0.85rem;background:#fff;color:#000;border-radius:10px;font-family:'Black Ops One',sans-serif;font-size:0.85rem;letter-spacing:0.15em;text-decoration:none;margin-bottom:0.75rem;box-shadow:0 0 30px rgba(255,255,255,0.15);transition:all 0.2s;">
+        Abrir Stripe Dashboard →
+      </a>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.1em;cursor:pointer;">Fechar</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) overlay.remove(); });
+}
+
+function showError(msg) {
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:#ff8888;font-family:"DM Mono",monospace;font-size:0.72rem;padding:0.75rem 1.5rem;border-radius:999px;z-index:9999;animation:fadeUp 0.3s ease;white-space:nowrap;';
+  banner.textContent = '✕ ' + msg;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 4000);
+}
+
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if(!isOpen) item.classList.add('open');
+}
+
+// Auto-open first FAQ item
+document.querySelector('.faq-item')?.classList.add('open');
+</script>
+</body>
+</html>
